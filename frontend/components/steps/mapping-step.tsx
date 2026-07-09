@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { ArrowLeft, ArrowRight, AlertCircle } from 'lucide-react';
 import { CRM_FIELDS, CRM_FIELD_NAMES, DO_NOT_IMPORT } from '@/lib/crm-fields';
 
@@ -18,7 +18,8 @@ interface MappingStepProps {
   onBack: () => void;
 }
 
-function normalizeConfidence(c: number): number {
+function normalizeConfidence(c: number | undefined | null): number {
+  if (c == null || isNaN(c)) return 0;
   return c > 1 ? c / 100 : c;
 }
 
@@ -41,15 +42,40 @@ function displayConfidence(confidence: number): string {
   return `${Math.round(c * 100)}%`;
 }
 
+function findMapping(autoMappings: ColumnMapping[], header: string): ColumnMapping | undefined {
+  const trimmed = header.trim();
+  return autoMappings.find(
+    m => m.csvColumn.trim() === trimmed || m.csvColumn.trim().toLowerCase() === trimmed.toLowerCase()
+  );
+}
+
+function buildAutoMap(autoMappings: ColumnMapping[], headers: string[]): Record<string, string> {
+  const map: Record<string, string> = {};
+  for (const h of headers) {
+    const found = findMapping(autoMappings, h);
+    map[h] = found ? found.crmField : DO_NOT_IMPORT;
+  }
+  return map;
+}
+
 export function MappingStep({ headers, autoMappings, analysisError, onConfirm, onBack }: MappingStepProps) {
-  const [mappings, setMappings] = useState<Record<string, string>>(() => {
-    const initial: Record<string, string> = {};
-    const autoMap = new Map(autoMappings.map(m => [m.csvColumn, m.crmField]));
-    for (const h of headers) {
-      initial[h] = autoMap.get(h) || DO_NOT_IMPORT;
-    }
-    return initial;
-  });
+  const [mappings, setMappings] = useState<Record<string, string>>(() => buildAutoMap(autoMappings, headers));
+
+  useEffect(() => {
+    setMappings(prev => {
+      const next = buildAutoMap(autoMappings, headers);
+      let changed = false;
+      for (const h of headers) {
+        if (prev[h] !== next[h]) { changed = true; break; }
+      }
+      if (!changed) {
+        for (const h of Object.keys(prev)) {
+          if (!headers.includes(h)) { changed = true; break; }
+        }
+      }
+      return changed ? next : prev;
+    });
+  }, [autoMappings, headers]);
 
   const requiredFields = CRM_FIELDS.filter(f => f.required).map(f => f.field);
 
@@ -67,7 +93,7 @@ export function MappingStep({ headers, autoMappings, analysisError, onConfirm, o
       .map(h => ({
         csvColumn: h,
         crmField: mappings[h],
-        confidence: autoMappings.find(m => m.csvColumn === h)?.confidence ?? 0,
+        confidence: findMapping(autoMappings, h)?.confidence ?? 0,
       }));
     onConfirm(result);
   };
@@ -108,7 +134,7 @@ export function MappingStep({ headers, autoMappings, analysisError, onConfirm, o
           </thead>
           <tbody>
             {headers.map((header) => {
-              const auto = autoMappings.find(m => m.csvColumn === header);
+              const auto = findMapping(autoMappings, header);
               return (
                 <tr
                   key={header}
