@@ -84,11 +84,15 @@ export function MappingStep({ headers, autoMappings, analysisError, isAnalyzing,
     (rf) => !Object.values(mappings).includes(rf)
   );
 
+  const mappedCount = headers.filter(h => mappings[h] !== DO_NOT_IMPORT).length;
+  const canProceed = mappedCount > 0;
+
   const handleChange = (header: string, value: string) => {
     setMappings(prev => ({ ...prev, [header]: value }));
   };
 
   const handleConfirm = () => {
+    if (!canProceed) return;
     const result: ColumnMapping[] = headers
       .filter(h => mappings[h] !== DO_NOT_IMPORT)
       .map(h => ({
@@ -116,6 +120,13 @@ export function MappingStep({ headers, autoMappings, analysisError, isAnalyzing,
         </div>
       )}
 
+      {!isAnalyzing && autoMappings.length === 0 && !analysisError && (
+        <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-200 flex items-start gap-3">
+          <AlertCircle className="h-5 w-5 flex-shrink-0 mt-0.5" />
+          <span>AI could not auto-detect column mappings for this file. Select the CRM field for each column manually below.</span>
+        </div>
+      )}
+
       {!isAnalyzing && analysisError && (
         <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-200 flex items-start gap-3">
           <AlertCircle className="h-5 w-5 flex-shrink-0 mt-0.5" />
@@ -123,7 +134,14 @@ export function MappingStep({ headers, autoMappings, analysisError, isAnalyzing,
         </div>
       )}
 
-      {missingRequired.length > 0 && (
+      {!canProceed && (
+        <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800 dark:border-red-800 dark:bg-red-950 dark:text-red-200 flex items-start gap-3">
+          <AlertCircle className="h-5 w-5 flex-shrink-0 mt-0.5" />
+          <span>No columns mapped. Select a CRM field for at least one column before importing.</span>
+        </div>
+      )}
+
+      {missingRequired.length > 0 && canProceed && (
         <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-200">
           <span className="font-semibold">Required fields not mapped:</span>{' '}
           {missingRequired.map(f => CRM_FIELDS.find(cf => cf.field === f)?.description || f).join(', ')}.
@@ -193,7 +211,12 @@ export function MappingStep({ headers, autoMappings, analysisError, isAnalyzing,
         </button>
         <button
           onClick={handleConfirm}
-          className="inline-flex items-center justify-center gap-2 rounded-lg bg-blue-600 px-6 py-3 font-medium text-white hover:bg-blue-700 transition-colors"
+          disabled={!canProceed}
+          className={`inline-flex items-center justify-center gap-2 rounded-lg px-6 py-3 font-medium transition-colors ${
+            canProceed
+              ? 'bg-blue-600 text-white hover:bg-blue-700'
+              : 'bg-slate-300 text-slate-500 cursor-not-allowed dark:bg-slate-700 dark:text-slate-500'
+          }`}
         >
           Start Import
           <ArrowRight size={16} />
