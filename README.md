@@ -230,8 +230,34 @@ Process rows through AI extraction. Returns a streaming NDJSON response with pro
 
 ### Render (Backend)
 
-1. Go to [render.com](https://render.com) → **New Web Service** → Connect your repo.
-2. Set **Root Directory** to `backend`.
+Render supports two deployment methods. Choose **one**:
+
+#### Option A — Docker (recommended)
+
+Uses the existing `backend/Dockerfile`.
+
+1. Go to [render.com](https://render.com) → **New** → **Web Service** → Connect your repo.
+2. **Root Directory** → `backend`
+3. **Runtime** → `Docker`
+4. Leave **Docker Command** blank (the `CMD` in the Dockerfile handles startup).
+5. Leave **Pre-deploy Command** blank.
+6. Add environment variables:
+
+   | Variable            | Value                             |
+   |---------------------|-----------------------------------|
+   | `AI_PROVIDER`       | `groq` (or your provider)         |
+   | `GROQ_API_URL`      | `https://api.groq.com/openai/v1`  |
+   | `GROQ_API_KEY`      | Your API key                      |
+   | `GROQ_MODEL`        | `qwen/qwen3-32b`                  |
+   | `PORT`              | `3001`                            |
+
+7. **Health Check Path** → `/api/health`
+8. Click **Create Web Service**.
+
+#### Option B — Node (no Docker)
+
+1. Go to [render.com](https://render.com) → **New** → **Web Service** → Connect your repo.
+2. **Root Directory** → `backend`
 3. **Runtime** → `Node`
 4. **Build Command**:
    ```bash
@@ -241,21 +267,20 @@ Process rows through AI extraction. Returns a streaming NDJSON response with pro
    ```bash
    npm start
    ```
-6. Add environment variables:
+6. Leave **Pre-deploy Command** blank.
+7. Add the same environment variables as Option A above, plus:
 
-   | Variable            | Value                             |
-   |---------------------|-----------------------------------|
-   | `AI_PROVIDER`       | `groq` (or your provider)         |
-   | `GROQ_API_URL`      | `https://api.groq.com/openai/v1`  |
-   | `GROQ_API_KEY`      | Your API key                      |
-   | `GROQ_MODEL`        | `qwen/qwen3-32b`                  |
-   | `NODE_VERSION`      | `20`                              |
-   | `PORT`              | `3001`                            |
+   | Variable         | Value |
+   |------------------|-------|
+   | `NODE_VERSION`   | `20`  |
 
-7. **Health Check Path** → `/api/health`
-8. Click **Create Web Service**.
+8. **Health Check Path** → `/api/health`
+9. Click **Create Web Service**.
 
-> **CORS note:** The backend already allows all origins via `cors()`, so no additional CORS config is needed. For production, lock down `cors({ origin: 'https://your-app.vercel.app' })` in `backend/src/index.ts`.
+> **CORS note:** The backend already allows all origins via `cors()`. For production, lock it down by editing `backend/src/index.ts`:
+> ```ts
+> app.use(cors({ origin: 'https://your-app.vercel.app' }));
+> ```
 
 ### Environment Summary
 

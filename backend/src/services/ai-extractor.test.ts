@@ -241,7 +241,7 @@ describe('autoDetectMappings', () => {
 
 describe('importFromRawData', () => {
   it('imports a record with email and mobile', () => {
-    const records = [{ Email: 'test@example.com', Mobile: '1234567890', Name: 'Test User' }];
+    const records: Record<string, string>[] = [{ Email: 'test@example.com', Mobile: '1234567890', Name: 'Test User' }];
     const result = importFromRawData(records, 0);
     expect(result.imported).toHaveLength(1);
     expect(result.skipped).toHaveLength(0);
@@ -251,7 +251,7 @@ describe('importFromRawData', () => {
   });
 
   it('skips record missing both email and mobile', () => {
-    const records = [{ Name: 'No Contact' }];
+    const records: Record<string, string>[] = [{ Name: 'No Contact' }];
     const result = importFromRawData(records, 0);
     expect(result.imported).toHaveLength(0);
     expect(result.skipped).toHaveLength(1);
@@ -260,28 +260,28 @@ describe('importFromRawData', () => {
   });
 
   it('extracts first email and puts rest in crm_note', () => {
-    const records = [{ Email: 'primary@test.com; secondary@test.com', Mobile: '12345' }];
+    const records: Record<string, string>[] = [{ Email: 'primary@test.com; secondary@test.com', Mobile: '12345' }];
     const result = importFromRawData(records, 0);
     expect(result.imported[0].email).toBe('primary@test.com');
     expect(result.imported[0].crm_note).toContain('secondary@test.com');
   });
 
   it('extracts first mobile and puts rest in crm_note', () => {
-    const records = [{ Email: 'test@test.com', Mobile: '11111; 22222' }];
+    const records: Record<string, string>[] = [{ Email: 'test@test.com', Mobile: '11111; 22222' }];
     const result = importFromRawData(records, 0);
     expect(result.imported[0].mobile_without_country_code).toBe('11111');
     expect(result.imported[0].crm_note).toContain('22222');
   });
 
   it('uses mapped fields over raw fields', () => {
-    const records = [{ email: 'raw@test.com' }];
-    const mappedRecords = [{ email: 'mapped@test.com' }];
+    const records: Record<string, string>[] = [{ email: 'raw@test.com' }];
+    const mappedRecords: Record<string, string>[] = [{ email: 'mapped@test.com' }];
     const result = importFromRawData(records, 0, mappedRecords);
     expect(result.imported[0].email).toBe('mapped@test.com');
   });
 
   it('assigns correct row numbers with offset', () => {
-    const records = [
+    const records: Record<string, string>[] = [
       { Email: 'a@b.com', Mobile: '111' },
       { Name: 'No Contact' },
       { Email: 'c@d.com', Mobile: '222' },
