@@ -90,10 +90,28 @@ export async function analyzeColumns(
         await new Promise((r) => setTimeout(r, 60000));
         continue;
       }
+      const delay = parseAnalyzeRetryDelay(err);
+      if (delay > 0) {
+        await new Promise((r) => setTimeout(r, delay));
+        continue;
+      }
+      if (attempt < 2) {
+        await new Promise((r) => setTimeout(r, 1000 * (attempt + 1)));
+        continue;
+      }
       throw err;
     }
   }
   throw new Error('Column analysis failed after 3 retries');
+}
+
+function parseAnalyzeRetryDelay(err: unknown): number {
+  const msg = (err as Error).message;
+  const match = msg.match(/try again in (\d+)m/i);
+  if (match) return (parseInt(match[1]) + 1) * 60 * 1000;
+  if (msg.includes('429') || msg.includes('rate limit') || msg.includes('too many requests')) return 30000;
+  if (msg.includes('503') || msg.includes('502') || msg.includes('service unavailable') || msg.includes('timeout') || msg.includes('ETIMEDOUT') || msg.includes('ECONNRESET')) return 5000;
+  return 0;
 }
 
 export function buildMappingPrompt(mappings: ColumnMapping[]): string {

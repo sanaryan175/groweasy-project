@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { ArrowLeft, ArrowRight } from 'lucide-react';
+import { ArrowLeft, ArrowRight, AlertCircle } from 'lucide-react';
 import { CRM_FIELDS, CRM_FIELD_NAMES, DO_NOT_IMPORT } from '@/lib/crm-fields';
 
 interface ColumnMapping {
@@ -13,6 +13,7 @@ interface ColumnMapping {
 interface MappingStepProps {
   headers: string[];
   autoMappings: ColumnMapping[];
+  analysisError?: string | null;
   onConfirm: (mappings: ColumnMapping[]) => void;
   onBack: () => void;
 }
@@ -40,7 +41,7 @@ function displayConfidence(confidence: number): string {
   return `${Math.round(c * 100)}%`;
 }
 
-export function MappingStep({ headers, autoMappings, onConfirm, onBack }: MappingStepProps) {
+export function MappingStep({ headers, autoMappings, analysisError, onConfirm, onBack }: MappingStepProps) {
   const [mappings, setMappings] = useState<Record<string, string>>(() => {
     const initial: Record<string, string> = {};
     const autoMap = new Map(autoMappings.map(m => [m.csvColumn, m.crmField]));
@@ -80,6 +81,13 @@ export function MappingStep({ headers, autoMappings, onConfirm, onBack }: Mappin
           <span className="text-lg font-bold text-slate-900 dark:text-slate-100">{headers.length}</span>
         </div>
       </div>
+
+      {analysisError && (
+        <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-200 flex items-start gap-3">
+          <AlertCircle className="h-5 w-5 flex-shrink-0 mt-0.5" />
+          <span>{analysisError} You can still map columns manually.</span>
+        </div>
+      )}
 
       {missingRequired.length > 0 && (
         <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-200">
