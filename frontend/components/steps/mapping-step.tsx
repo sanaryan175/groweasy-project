@@ -17,16 +17,27 @@ interface MappingStepProps {
   onBack: () => void;
 }
 
+function normalizeConfidence(c: number): number {
+  return c > 1 ? c / 100 : c;
+}
+
 function getConfidenceLabel(confidence: number): string {
-  if (confidence >= 0.8) return 'High';
-  if (confidence >= 0.5) return 'Medium';
+  const c = normalizeConfidence(confidence);
+  if (c >= 0.8) return 'High';
+  if (c >= 0.5) return 'Medium';
   return 'Low';
 }
 
 function getConfidenceColor(confidence: number): string {
-  if (confidence >= 0.8) return 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300';
-  if (confidence >= 0.5) return 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300';
+  const c = normalizeConfidence(confidence);
+  if (c >= 0.8) return 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300';
+  if (c >= 0.5) return 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300';
   return 'bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300';
+}
+
+function displayConfidence(confidence: number): string {
+  const c = normalizeConfidence(confidence);
+  return `${Math.round(c * 100)}%`;
 }
 
 export function MappingStep({ headers, autoMappings, onConfirm, onBack }: MappingStepProps) {
@@ -117,7 +128,7 @@ export function MappingStep({ headers, autoMappings, onConfirm, onBack }: Mappin
                       <span
                         className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${getConfidenceColor(auto.confidence)}`}
                       >
-                        {getConfidenceLabel(auto.confidence)} ({Math.round(auto.confidence * 100)}%)
+                        {getConfidenceLabel(auto.confidence)} ({displayConfidence(auto.confidence)})
                       </span>
                     ) : (
                       <span className="text-sm text-slate-400 dark:text-slate-500">—</span>
