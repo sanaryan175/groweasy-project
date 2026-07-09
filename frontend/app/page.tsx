@@ -3,12 +3,13 @@
 import { useState, useCallback } from 'react';
 import { UploadStep } from '@/components/steps/upload-step';
 import { PreviewStep } from '@/components/steps/preview-step';
+import { MappingStep } from '@/components/steps/mapping-step';
 import { ProcessingStep } from '@/components/steps/processing-step';
 import { ResultsStep } from '@/components/steps/results-step';
 import { Stepper } from '@/components/stepper';
-import { processCSVStream, type ProcessResponse } from '@/lib/api';
+import { processCSVStream, analyzeCSV, type ProcessResponse, type CSVAnalysis } from '@/lib/api';
 
-type Step = 'upload' | 'preview' | 'processing' | 'results';
+type Step = 'upload' | 'preview' | 'mapping' | 'processing' | 'results';
 
 interface CSVData {
   file: File | null;
@@ -30,13 +31,26 @@ export default function Page() {
   const [processingImported, setProcessingImported] = useState(0);
   const [processingSkipped, setProcessingSkipped] = useState(0);
 
-  const handleFileUpload = (file: File, rows: Array<Record<string, string>>, headers: string[]) => {
+  const [columnAnalysis, setColumnAnalysis] = useState<CSVAnalysis | null>(null);
+  const [columnMappings, setColumnMappings] = useState<import('@/lib/api').ColumnMapping[]>([]);
+
+  const handleFileUpload = async (file: File, rows: Array<Record<string, string>>, headers: string[]) => {
     setCSVData({ file, rows, headers });
     setError(null);
+    setColumnAnalysis(null);
+    setColumnMappings([]);
     setCurrentStep('preview');
+
+    try {
+      const analysis = await analyzeCSV(headers, rows.slice(0, 20));
+      setColumnAnalysis(analysis);
+      setColumnMappings(analysis.mappings);
+    } catch {
+      // AI analysis is optional; proceed without auto-mappings
+    }
   };
 
-  const handleConfirmImport = useCallback(async () => {
+  const handleConfirmImport = useCallback(async (mappings?: import('@/lib/api').ColumnMapping[]) => {
     setCurrentStep('processing');
     setError(null);
     setProcessingProgress(0);
@@ -51,7 +65,7 @@ export default function Page() {
           setProcessingSkipped(skipped);
           setProcessingProgress(Math.round(((imported + skipped) / total) * 100));
         },
-        undefined,
+        mappings,
         undefined,
         undefined
       );
@@ -64,11 +78,26 @@ export default function Page() {
     }
   }, [csvData.rows]);
 
+  const handleContinueToMapping = () => {
+    setCurrentStep('mapping');
+  };
+
+  const handleMappingBack = () => {
+    setCurrentStep('preview');
+  };
+
+  const handleConfirmMapping = (mappings: import('@/lib/api').ColumnMapping[]) => {
+    setColumnMappings(mappings);
+    handleConfirmImport(mappings);
+  };
+
   const handleUploadDifferent = () => {
     setCurrentStep('upload');
     setCSVData({ file: null, rows: [], headers: [] });
     setResults(null);
     setError(null);
+    setColumnAnalysis(null);
+    setColumnMappings([]);
   };
 
   const handleReset = () => {
@@ -76,9 +105,11 @@ export default function Page() {
     setCSVData({ file: null, rows: [], headers: [] });
     setResults(null);
     setError(null);
+    setColumnAnalysis(null);
+    setColumnMappings([]);
   };
 
-  const steps: Step[] = ['upload', 'preview', 'processing', 'results'];
+  const steps: Step[] = ['upload', 'preview', 'mapping', 'processing', 'results'];
 
   return (
     <main className="min-h-screen bg-gradient-to-br from-slate-50 via-slate-50 to-blue-50 py-12 px-4 sm:px-6 lg:px-8 dark:from-slate-950 dark:via-slate-950 dark:to-blue-950">
@@ -101,8 +132,16 @@ export default function Page() {
           {currentStep === 'preview' && (
             <PreviewStep
               csvData={csvData}
-              onConfirm={handleConfirmImport}
+              onContinue={handleContinueToMapping}
               onUploadDifferent={handleUploadDifferent}
+            />
+          )}
+          {currentStep === 'mapping' && (
+            <MappingStep
+              headers={csvData.headers}
+              autoMappings={columnMappings}
+              onConfirm={handleConfirmMapping}
+              onBack={handleMappingBack}
             />
           )}
           {currentStep === 'processing' && (

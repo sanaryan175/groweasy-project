@@ -107,7 +107,7 @@ export default function DemoPage() {
           {currentStep === 'preview' && (
             <PreviewStep
               csvData={demoCSVData}
-              onConfirm={() => setCurrentStep('mapping')}
+              onContinue={() => setCurrentStep('mapping')}
               onUploadDifferent={() => setCurrentStep('upload')}
             />
           )}

@@ -1,26 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { ChevronDown, AlertTriangle, CheckCircle, RefreshCw } from 'lucide-react';
-
-const CRM_FIELD_OPTIONS = [
-  { value: '', label: '— Do not map —' },
-  { value: 'name', label: 'Full Name' },
-  { value: 'email', label: 'Email' },
-  { value: 'mobile_without_country_code', label: 'Mobile Number' },
-  { value: 'country_code', label: 'Country Code' },
-  { value: 'company', label: 'Company' },
-  { value: 'city', label: 'City' },
-  { value: 'state', label: 'State' },
-  { value: 'country', label: 'Country' },
-  { value: 'lead_owner', label: 'Lead Owner' },
-  { value: 'crm_status', label: 'CRM Status' },
-  { value: 'crm_note', label: 'CRM Note' },
-  { value: 'data_source', label: 'Data Source' },
-  { value: 'possession_time', label: 'Possession Time' },
-  { value: 'description', label: 'Description' },
-  { value: 'created_at', label: 'Created At' },
-];
+import { useState } from 'react';
+import { ArrowLeft, ArrowRight } from 'lucide-react';
+import { CRM_FIELDS, CRM_FIELD_NAMES, DO_NOT_IMPORT } from '@/lib/crm-fields';
 
 interface ColumnMapping {
   csvColumn: string;
@@ -28,28 +10,11 @@ interface ColumnMapping {
   confidence: number;
 }
 
-interface CSVAnalysis {
-  csvType: string;
-  csvTypeDescription: string;
-  mappings: ColumnMapping[];
-  unmappedColumns: string[];
-  missingRequiredFields: string[];
-}
-
 interface MappingStepProps {
   headers: string[];
-  analysis: CSVAnalysis | null;
-  analyzing: boolean;
-  onMappingChange: (mappings: ColumnMapping[]) => void;
-  onConfirm: () => void;
+  autoMappings: ColumnMapping[];
+  onConfirm: (mappings: ColumnMapping[]) => void;
   onBack: () => void;
-  error?: string | null;
-}
-
-function getConfidenceColor(confidence: number): string {
-  if (confidence >= 0.8) return 'bg-green-100 text-green-700 border-green-200';
-  if (confidence >= 0.5) return 'bg-yellow-100 text-yellow-700 border-yellow-200';
-  return 'bg-red-100 text-red-700 border-red-200';
 }
 
 function getConfidenceLabel(confidence: number): string {
@@ -58,233 +23,127 @@ function getConfidenceLabel(confidence: number): string {
   return 'Low';
 }
 
-export function MappingStep({
-  headers,
-  analysis,
-  analyzing,
-  onMappingChange,
-  onConfirm,
-  onBack,
-  error,
-}: MappingStepProps) {
-  const localMappings = analysis?.mappings ?? headers.map(h => ({
-    csvColumn: h,
-    crmField: '',
-    confidence: 0,
-  }));
+function getConfidenceColor(confidence: number): string {
+  if (confidence >= 0.8) return 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300';
+  if (confidence >= 0.5) return 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300';
+  return 'bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300';
+}
 
-  const [mappings, setMappings] = useState<ColumnMapping[]>(localMappings);
-
-  useEffect(() => {
-    if (analysis) {
-      const merged = analysis.mappings.length > 0
-        ? analysis.mappings
-        : headers.map(h => ({ csvColumn: h, crmField: '', confidence: 0 }));
-      setMappings(merged);
+export function MappingStep({ headers, autoMappings, onConfirm, onBack }: MappingStepProps) {
+  const [mappings, setMappings] = useState<Record<string, string>>(() => {
+    const initial: Record<string, string> = {};
+    const autoMap = new Map(autoMappings.map(m => [m.csvColumn, m.crmField]));
+    for (const h of headers) {
+      initial[h] = autoMap.get(h) || DO_NOT_IMPORT;
     }
-  }, [analysis, headers]);
+    return initial;
+  });
 
-  const usedFields = mappings.filter(m => m.crmField).map(m => m.crmField);
+  const requiredFields = CRM_FIELDS.filter(f => f.required).map(f => f.field);
 
-  const handleFieldChange = (csvColumn: string, crmField: string) => {
-    const updated = mappings.map(m =>
-      m.csvColumn === csvColumn ? { ...m, crmField, confidence: crmField ? 1 : 0 } : m
-    );
-    setMappings(updated);
-    onMappingChange(updated);
+  const missingRequired = requiredFields.filter(
+    (rf) => !Object.values(mappings).includes(rf)
+  );
+
+  const handleChange = (header: string, value: string) => {
+    setMappings(prev => ({ ...prev, [header]: value }));
   };
 
-  if (analyzing) {
-    return (
-      <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 space-y-8">
-        <div className="text-center py-16">
-          <div className="inline-flex items-center justify-center mb-6">
-            <div className="relative h-16 w-16">
-              <div className="absolute inset-0 rounded-full border-4 border-slate-200" />
-              <div
-                className="absolute inset-0 rounded-full border-4 border-transparent border-t-blue-600 animate-spin"
-                style={{ animationDuration: '1s' }}
-              />
-            </div>
-          </div>
-          <h3 className="text-2xl font-bold text-slate-900">AI is analyzing your CSV structure...</h3>
-          <p className="mt-3 text-slate-600 max-w-md mx-auto">
-            Detecting column types, suggesting field mappings, and identifying the CSV source format.
-          </p>
-          <div className="mt-8 mx-auto max-w-md">
-            <div className="h-2 w-full rounded-full bg-slate-200 overflow-hidden">
-              <div className="h-full bg-gradient-to-r from-blue-500 to-blue-600 rounded-full animate-pulse" style={{ width: '60%' }} />
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 space-y-6">
-        <div className="rounded-lg border border-red-200 bg-red-50 p-6 text-center">
-          <AlertTriangle className="mx-auto h-12 w-12 text-red-400 mb-4" />
-          <h3 className="text-lg font-semibold text-red-800">Analysis Failed</h3>
-          <p className="mt-2 text-sm text-red-600">{error}</p>
-          <button
-            onClick={onBack}
-            className="mt-6 inline-flex items-center gap-2 rounded-lg bg-white border border-red-300 px-4 py-2 text-sm font-medium text-red-700 hover:bg-red-50 transition-colors"
-          >
-            <RefreshCw size={16} />
-            Try Again
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  if (!analysis) {
-    return null;
-  }
+  const handleConfirm = () => {
+    const result: ColumnMapping[] = headers
+      .filter(h => mappings[h] !== DO_NOT_IMPORT)
+      .map(h => ({
+        csvColumn: h,
+        crmField: mappings[h],
+        confidence: autoMappings.find(m => m.csvColumn === h)?.confidence ?? 0,
+      }));
+    onConfirm(result);
+  };
 
   return (
-    <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 space-y-8">
-      {/* CSV Type Detection */}
-      <div className="rounded-lg border border-slate-200 bg-white p-6">
-        <div className="flex items-start gap-4">
-          <div className="rounded-lg bg-blue-50 p-3">
-            <CheckCircle className="h-6 w-6 text-blue-600" />
-          </div>
-          <div className="flex-1">
-            <h3 className="text-lg font-semibold text-slate-900">CSV Source Detected</h3>
-            <div className="mt-2 flex items-center gap-2">
-              <span className="rounded-full bg-blue-100 px-3 py-1 text-sm font-medium text-blue-700">
-                {analysis.csvType}
-              </span>
-              {analysis.missingRequiredFields.length > 0 && (
-                <span className="rounded-full bg-yellow-100 px-3 py-1 text-sm font-medium text-yellow-700 flex items-center gap-1">
-                  <AlertTriangle size={14} />
-                  Missing {analysis.missingRequiredFields.length} field{analysis.missingRequiredFields.length > 1 ? 's' : ''}
-                </span>
-              )}
-            </div>
-            {analysis.csvTypeDescription && (
-              <p className="mt-1 text-sm text-slate-500">{analysis.csvTypeDescription}</p>
-            )}
-          </div>
+    <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <h2 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Column Mapping</h2>
+        <div className="inline-flex items-center gap-2 rounded-lg bg-slate-100 px-3 py-1 dark:bg-slate-800">
+          <span className="text-sm font-medium text-slate-600 dark:text-slate-400">Columns:</span>
+          <span className="text-lg font-bold text-slate-900 dark:text-slate-100">{headers.length}</span>
         </div>
       </div>
 
-      {/* Missing Required Fields Warning */}
-      {analysis.missingRequiredFields.length > 0 && (
-        <div className="rounded-lg border border-yellow-200 bg-yellow-50 p-4">
-          <div className="flex items-start gap-3">
-            <AlertTriangle className="h-5 w-5 text-yellow-600 flex-shrink-0 mt-0.5" />
-            <div>
-              <p className="font-medium text-yellow-800 text-sm">Missing Recommended Fields</p>
-              <p className="mt-1 text-sm text-yellow-700">
-                These fields were not found in your CSV: {analysis.missingRequiredFields.join(', ')}.
-                The AI will try to infer them from available data.
-              </p>
-            </div>
-          </div>
+      {missingRequired.length > 0 && (
+        <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-200">
+          <span className="font-semibold">Required fields not mapped:</span>{' '}
+          {missingRequired.map(f => CRM_FIELDS.find(cf => cf.field === f)?.description || f).join(', ')}.
+          Map at least one column to each required field.
         </div>
       )}
 
-      {/* Column Mapping Table */}
-      <div className="rounded-lg border border-slate-200 bg-white">
-        <div className="border-b border-slate-200 bg-slate-50 px-6 py-4">
-          <h3 className="font-semibold text-slate-900">Column Mapping</h3>
-          <p className="text-sm text-slate-500 mt-1">
-            Review how AI mapped your CSV columns to CRM fields. Adjust any incorrect mappings below.
-          </p>
-        </div>
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-slate-50 border-b border-slate-200">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-semibold text-slate-900 uppercase tracking-wider">CSV Column</th>
-                <th className="px-6 py-3 text-left text-xs font-semibold text-slate-900 uppercase tracking-wider">Maps To</th>
-                <th className="px-6 py-3 text-left text-xs font-semibold text-slate-900 uppercase tracking-wider">Confidence</th>
-              </tr>
-            </thead>
-            <tbody>
-              {mappings.map((mapping, idx) => {
-                const mappingFromAnalysis = analysis.mappings.find(m => m.csvColumn === mapping.csvColumn);
-                const confidence = mappingFromAnalysis?.confidence ?? 0;
-                const isAutoMapped = mappingFromAnalysis && mappingFromAnalysis.crmField;
-
-                return (
-                  <tr
-                    key={mapping.csvColumn}
-                    className={`border-b border-slate-200 transition-colors ${
-                      idx % 2 === 0 ? 'bg-white' : 'bg-slate-50'
-                    } hover:bg-blue-50`}
-                  >
-                    <td className="px-6 py-4">
-                      <span className="font-mono text-sm font-medium text-slate-900">{mapping.csvColumn}</span>
-                      {!isAutoMapped && (
-                        <span className="ml-2 inline-flex items-center rounded-full bg-orange-100 px-2 py-0.5 text-xs font-medium text-orange-700">
-                          Unmapped
-                        </span>
-                      )}
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="relative">
-                        <select
-                          value={mapping.crmField}
-                          onChange={(e) => handleFieldChange(mapping.csvColumn, e.target.value)}
-                          className="w-full min-w-[200px] appearance-none rounded-lg border border-slate-300 bg-white px-3 py-2 pr-8 text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors hover:border-slate-400"
-                        >
-                          {CRM_FIELD_OPTIONS.map((opt) => (
-                            <option
-                              key={opt.value}
-                              value={opt.value}
-                              disabled={opt.value !== '' && usedFields.includes(opt.value) && opt.value !== mapping.crmField}
-                            >
-                              {opt.label}
-                            </option>
-                          ))}
-                        </select>
-                        <ChevronDown className="pointer-events-none absolute right-2.5 top-3 h-4 w-4 text-slate-400" />
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      {mapping.crmField ? (
-                        <span className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium ${getConfidenceColor(confidence)}`}>
-                          {getConfidenceLabel(confidence)}
-                        </span>
-                      ) : (
-                        <span className="text-sm text-slate-400">—</span>
-                      )}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-
-        {/* Unmapped Columns */}
-        {analysis.unmappedColumns.length > 0 && (
-          <div className="border-t border-slate-200 bg-slate-50 px-6 py-4">
-            <p className="text-sm text-slate-600">
-              <span className="font-semibold">Note:</span> {analysis.unmappedColumns.length} column{analysis.unmappedColumns.length > 1 ? 's were' : ' was'} not automatically mapped and may require manual assignment above.
-            </p>
-          </div>
-        )}
+      <div className="overflow-hidden rounded-lg border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900">
+        <table className="w-full">
+          <thead className="sticky top-0 bg-slate-50 border-b border-slate-200 dark:bg-slate-800 dark:border-slate-700">
+            <tr>
+              <th className="px-6 py-3 text-left text-sm font-semibold text-slate-900 dark:text-slate-100 w-[30%]">CSV Column</th>
+              <th className="px-6 py-3 text-left text-sm font-semibold text-slate-900 dark:text-slate-100">CRM Field</th>
+              <th className="px-6 py-3 text-left text-sm font-semibold text-slate-900 dark:text-slate-100 w-[20%]">AI Confidence</th>
+            </tr>
+          </thead>
+          <tbody>
+            {headers.map((header) => {
+              const auto = autoMappings.find(m => m.csvColumn === header);
+              return (
+                <tr
+                  key={header}
+                  className="border-b border-slate-200 transition-colors hover:bg-blue-50 dark:border-slate-700 dark:hover:bg-blue-950"
+                >
+                  <td className="px-6 py-3 text-sm font-medium text-slate-900 dark:text-slate-100">
+                    {header}
+                  </td>
+                  <td className="px-6 py-3">
+                    <select
+                      value={mappings[header]}
+                      onChange={(e) => handleChange(header, e.target.value)}
+                      className="w-full max-w-xs rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-300 dark:focus:border-blue-400 dark:focus:ring-blue-800"
+                    >
+                      <option value={DO_NOT_IMPORT}>— Do not import —</option>
+                      {CRM_FIELDS.map((cf) => (
+                        <option key={cf.field} value={cf.field}>
+                          {cf.field} {cf.required ? '(required)' : ''} — {cf.description}
+                        </option>
+                      ))}
+                    </select>
+                  </td>
+                  <td className="px-6 py-3">
+                    {auto ? (
+                      <span
+                        className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${getConfidenceColor(auto.confidence)}`}
+                      >
+                        {getConfidenceLabel(auto.confidence)} ({Math.round(auto.confidence * 100)}%)
+                      </span>
+                    ) : (
+                      <span className="text-sm text-slate-400 dark:text-slate-500">—</span>
+                    )}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
       </div>
 
-      {/* Action Buttons */}
       <div className="flex flex-col-reverse sm:flex-row gap-4 pt-6">
         <button
           onClick={onBack}
-          className="rounded-lg border border-slate-300 bg-white px-6 py-3 font-medium text-slate-700 hover:bg-slate-50 transition-colors text-center"
+          className="inline-flex items-center justify-center gap-2 rounded-lg border border-slate-300 bg-white px-6 py-3 font-medium text-slate-700 hover:bg-slate-50 transition-colors dark:border-slate-600 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
         >
+          <ArrowLeft size={16} />
           Back to Preview
         </button>
         <button
-          onClick={onConfirm}
-          className="flex-1 rounded-lg bg-blue-600 px-6 py-3 font-medium text-white hover:bg-blue-700 transition-colors text-center"
+          onClick={handleConfirm}
+          className="inline-flex items-center justify-center gap-2 rounded-lg bg-blue-600 px-6 py-3 font-medium text-white hover:bg-blue-700 transition-colors"
         >
-          Confirm Mapping & Start Import
+          Start Import
+          <ArrowRight size={16} />
         </button>
       </div>
     </div>

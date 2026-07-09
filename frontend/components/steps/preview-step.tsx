@@ -9,13 +9,13 @@ interface PreviewStepProps {
     rows: Array<Record<string, string>>;
     headers: string[];
   };
-  onConfirm: () => void;
+  onContinue: () => void;
   onUploadDifferent: () => void;
 }
 
 export function PreviewStep({
   csvData,
-  onConfirm,
+  onContinue,
   onUploadDifferent,
 }: PreviewStepProps) {
   const [currentPage, setCurrentPage] = useState(1);
@@ -131,10 +131,11 @@ export function PreviewStep({
           Upload Different File
         </button>
         <button
-          onClick={onConfirm}
-          className="rounded-lg bg-blue-600 px-6 py-3 font-medium text-white hover:bg-blue-700 transition-colors text-center"
+          onClick={onContinue}
+          className="inline-flex items-center justify-center gap-2 rounded-lg bg-blue-600 px-6 py-3 font-medium text-white hover:bg-blue-700 transition-colors text-center"
         >
-          Confirm Import
+          Configure Mapping
+          <ChevronRight size={16} />
         </button>
       </div>
     </div>

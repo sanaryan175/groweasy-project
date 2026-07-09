@@ -8,6 +8,7 @@ interface StepperProps {
 const stepLabels: Record<string, string> = {
   upload: 'Upload CSV',
   preview: 'Preview',
+  mapping: 'Column Mapping',
   processing: 'Importing',
   results: 'Results',
 };
