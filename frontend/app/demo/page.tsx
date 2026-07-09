@@ -7,7 +7,7 @@ import { ProcessingStep } from '@/components/steps/processing-step';
 import { ResultsStep } from '@/components/steps/results-step';
 import { Stepper } from '@/components/stepper';
 
-type Step = 'upload' | 'preview' | 'processing' | 'results';
+type Step = 'upload' | 'preview' | 'mapping' | 'processing' | 'results';
 
 interface CSVData {
   file: File | null;
@@ -65,14 +65,13 @@ export default function DemoPage() {
   };
 
   const handleFileUpload = () => setCurrentStep('preview');
-  const handleConfirmImport = () => setCurrentStep('processing');
+  const handleConfirmImport = () => setCurrentStep('mapping');
   const handleUploadDifferent = () => setCurrentStep('upload');
   const handleReset = () => setCurrentStep('upload');
 
   return (
     <main className="min-h-screen bg-gradient-to-br from-slate-50 via-slate-50 to-blue-50 py-12 px-4 sm:px-6 lg:px-8">
       <div className="mx-auto max-w-5xl">
-        {/* Header */}
         <div className="mb-12 text-center">
           <h1 className="text-balance text-4xl font-bold text-slate-900 sm:text-5xl">
             CSV Import Demo
@@ -81,7 +80,7 @@ export default function DemoPage() {
             Showing the {currentStep === 'results' ? 'Results' : currentStep === 'processing' ? 'Processing' : currentStep === 'preview' ? 'Preview' : 'Upload'} step
           </p>
           <div className="mt-6 flex flex-wrap gap-2 justify-center">
-            {(['upload', 'preview', 'processing', 'results'] as Step[]).map((step) => (
+            {(['upload', 'preview', 'mapping', 'processing', 'results'] as Step[]).map((step) => (
               <button
                 key={step}
                 onClick={() => setCurrentStep(step)}
@@ -97,10 +96,8 @@ export default function DemoPage() {
           </div>
         </div>
 
-        {/* Stepper */}
-        <Stepper currentStep={currentStep} />
+        <Stepper currentStep={currentStep} steps={['upload', 'preview', 'mapping', 'processing', 'results']} />
 
-        {/* Content */}
         <div className="mt-12">
           {currentStep === 'upload' && (
             <UploadStep onFileUpload={(file, rows, headers) => {
@@ -110,11 +107,16 @@ export default function DemoPage() {
           {currentStep === 'preview' && (
             <PreviewStep
               csvData={demoCSVData}
-              onConfirm={() => setCurrentStep('processing')}
+              onConfirm={() => setCurrentStep('mapping')}
               onUploadDifferent={() => setCurrentStep('upload')}
             />
           )}
-          {currentStep === 'processing' && <ProcessingStep />}
+          {currentStep === 'mapping' && (
+            <div className="text-center py-16 text-slate-500">
+              (Mapping step preview - not interactive in demo mode)
+            </div>
+          )}
+          {currentStep === 'processing' && <ProcessingStep progress={0} />}
           {currentStep === 'results' && (
             <ResultsStep
               results={demoResults}

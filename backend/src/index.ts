@@ -3,6 +3,7 @@ import express from 'express';
 import cors from 'cors';
 import { uploadRouter } from './routes/upload';
 import { processRouter } from './routes/process';
+import { analyzeRouter } from './routes/analyze';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -12,6 +13,7 @@ app.use(express.json({ limit: '50mb' }));
 
 app.use('/api/upload', uploadRouter);
 app.use('/api/process', processRouter);
+app.use('/api/analyze', analyzeRouter);
 
 app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });

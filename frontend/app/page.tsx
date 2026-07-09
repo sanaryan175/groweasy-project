@@ -6,7 +6,7 @@ import { PreviewStep } from '@/components/steps/preview-step';
 import { ProcessingStep } from '@/components/steps/processing-step';
 import { ResultsStep } from '@/components/steps/results-step';
 import { Stepper } from '@/components/stepper';
-import { uploadCSV, processCSV, type ProcessResponse } from '@/lib/api';
+import { processCSVStream, type ProcessResponse } from '@/lib/api';
 
 type Step = 'upload' | 'preview' | 'processing' | 'results';
 
@@ -24,8 +24,11 @@ export default function Page() {
     headers: [],
   });
   const [results, setResults] = useState<ProcessResponse | null>(null);
-  const [progress, setProgress] = useState({ imported: 0, total: 0, skipped: 0 });
   const [error, setError] = useState<string | null>(null);
+
+  const [processingProgress, setProcessingProgress] = useState(0);
+  const [processingImported, setProcessingImported] = useState(0);
+  const [processingSkipped, setProcessingSkipped] = useState(0);
 
   const handleFileUpload = (file: File, rows: Array<Record<string, string>>, headers: string[]) => {
     setCSVData({ file, rows, headers });
@@ -36,23 +39,35 @@ export default function Page() {
   const handleConfirmImport = useCallback(async () => {
     setCurrentStep('processing');
     setError(null);
-    setProgress({ imported: 0, total: csvData.rows.length, skipped: 0 });
+    setProcessingProgress(0);
+    setProcessingImported(0);
+    setProcessingSkipped(0);
 
     try {
-      const result = await processCSV(csvData.rows, (imported, skipped, total) => {
-        setProgress({ imported, total, skipped });
-      });
+      const result = await processCSVStream(
+        csvData.rows,
+        (imported, skipped, total) => {
+          setProcessingImported(imported);
+          setProcessingSkipped(skipped);
+          setProcessingProgress(Math.round(((imported + skipped) / total) * 100));
+        },
+        undefined,
+        undefined,
+        undefined
+      );
+      setProcessingProgress(100);
       setResults(result);
       setCurrentStep('results');
     } catch (err) {
       setError((err as Error).message);
-      setCurrentStep('upload');
+      setCurrentStep('preview');
     }
   }, [csvData.rows]);
 
   const handleUploadDifferent = () => {
     setCurrentStep('upload');
     setCSVData({ file: null, rows: [], headers: [] });
+    setResults(null);
     setError(null);
   };
 
@@ -63,23 +78,22 @@ export default function Page() {
     setError(null);
   };
 
+  const steps: Step[] = ['upload', 'preview', 'processing', 'results'];
+
   return (
-    <main className="min-h-screen bg-gradient-to-br from-slate-50 via-slate-50 to-blue-50 py-12 px-4 sm:px-6 lg:px-8">
+    <main className="min-h-screen bg-gradient-to-br from-slate-50 via-slate-50 to-blue-50 py-12 px-4 sm:px-6 lg:px-8 dark:from-slate-950 dark:via-slate-950 dark:to-blue-950">
       <div className="mx-auto max-w-5xl">
-        {/* Header */}
         <div className="mb-12 text-center">
-          <h1 className="text-balance text-4xl font-bold text-slate-900 sm:text-5xl">
-            CSV Import
+          <h1 className="text-balance text-4xl font-bold text-slate-900 sm:text-5xl dark:text-slate-100">
+            AI CSV Importer
           </h1>
-          <p className="mt-4 text-balance text-lg text-slate-600">
-            Upload customer data and let AI extract CRM records.
+          <p className="mt-4 text-balance text-lg text-slate-600 dark:text-slate-400">
+            Upload any CSV format — AI automatically detects and extracts CRM records.
           </p>
         </div>
 
-        {/* Stepper */}
-        <Stepper currentStep={currentStep} />
+        <Stepper currentStep={currentStep} steps={steps} />
 
-        {/* Content */}
         <div className="mt-12">
           {currentStep === 'upload' && (
             <UploadStep onFileUpload={handleFileUpload} />
@@ -93,9 +107,10 @@ export default function Page() {
           )}
           {currentStep === 'processing' && (
             <ProcessingStep
-              imported={progress.imported}
-              total={progress.total}
-              skipped={progress.skipped}
+              progress={processingProgress}
+              imported={processingImported}
+              skipped={processingSkipped}
+              total={csvData.rows.length}
             />
           )}
           {currentStep === 'results' && results && (

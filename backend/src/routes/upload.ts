@@ -1,4 +1,4 @@
-import { Router, Request, Response } from 'express';
+import { Router, Request, Response, NextFunction } from 'express';
 import multer from 'multer';
 import { parseCSV } from '../services/csv-parser';
 
@@ -16,31 +16,38 @@ const upload = multer({
   },
 });
 
-uploadRouter.post('/', upload.single('file'), (req: Request, res: Response) => {
-  try {
-    if (!req.file) {
-      res.status(400).json({ error: 'No file uploaded' });
+uploadRouter.post('/', (req: Request, res: Response, next: NextFunction) => {
+  upload.single('file')(req, res, (err) => {
+    if (err) {
+      res.status(400).json({ error: err.message });
       return;
     }
 
-    const content = req.file.buffer.toString('utf-8');
-    const parsed = parseCSV(content);
+    try {
+      if (!req.file) {
+        res.status(400).json({ error: 'No file uploaded' });
+        return;
+      }
 
-    if (parsed.totalRows === 0) {
-      res.status(400).json({ error: 'CSV file is empty or has no data rows' });
-      return;
+      const content = req.file.buffer.toString('utf-8');
+      const parsed = parseCSV(content);
+
+      if (parsed.totalRows === 0) {
+        res.status(400).json({ error: 'CSV file is empty or has no data rows' });
+        return;
+      }
+
+      res.json({
+        filename: req.file.originalname,
+        size: req.file.size,
+        headers: parsed.headers,
+        rows: parsed.rows.slice(0, 20),
+        totalRows: parsed.totalRows,
+      });
+    } catch (err) {
+      res.status(500).json({ error: 'Failed to parse CSV: ' + (err as Error).message });
     }
-
-    res.json({
-      filename: req.file.originalname,
-      size: req.file.size,
-      headers: parsed.headers,
-      rows: parsed.rows.slice(0, 20),
-      totalRows: parsed.totalRows,
-    });
-  } catch (err) {
-    res.status(500).json({ error: 'Failed to parse CSV: ' + (err as Error).message });
-  }
+  });
 });
 
 export { uploadRouter };

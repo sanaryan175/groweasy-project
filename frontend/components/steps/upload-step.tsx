@@ -10,12 +10,17 @@ interface UploadStepProps {
 export function UploadStep({ onFileUpload }: UploadStepProps) {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isDragging, setIsDragging] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFileChange = (file: File) => {
+    setError(null);
     if (file.type === 'text/csv' || file.name.endsWith('.csv')) {
       setSelectedFile(file);
       parseCSV(file);
+    } else {
+      setError('Only CSV files are supported. Please select a .csv file.');
+      setSelectedFile(null);
     }
   };
 
@@ -99,9 +104,9 @@ export function UploadStep({ onFileUpload }: UploadStepProps) {
         onDrop={handleDrop}
         onClick={() => fileInputRef.current?.click()}
         className={`rounded-lg border-2 border-dashed p-12 text-center transition-all duration-200 cursor-pointer ${
-          isDragging
-            ? 'border-blue-500 bg-blue-50'
-            : 'border-slate-300 bg-white hover:border-slate-400 hover:bg-slate-50'
+           isDragging
+            ? 'border-blue-500 bg-blue-50 dark:border-blue-400 dark:bg-blue-950'
+            : 'border-slate-300 bg-white hover:border-slate-400 hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-900 dark:hover:border-slate-500 dark:hover:bg-slate-800'
         }`}
       >
         <input
@@ -118,16 +123,16 @@ export function UploadStep({ onFileUpload }: UploadStepProps) {
         {!selectedFile ? (
           <>
             <div className="flex justify-center mb-4">
-              <div className="rounded-full bg-blue-50 p-4">
-                <Upload className="h-8 w-8 text-blue-600" />
+              <div className="rounded-full bg-blue-50 p-4 dark:bg-blue-950">
+                <Upload className="h-8 w-8 text-blue-600 dark:text-blue-400" />
               </div>
             </div>
-            <h3 className="text-xl font-semibold text-slate-900">
+            <h3 className="text-xl font-semibold text-slate-900 dark:text-slate-100">
               Upload your CSV file
             </h3>
-            <p className="mt-2 text-slate-600">
+            <p className="mt-2 text-slate-600 dark:text-slate-400">
               Drag and drop your CSV here, or{' '}
-              <span className="font-semibold text-blue-600">browse your computer</span>
+              <span className="font-semibold text-blue-600 dark:text-blue-400">browse your computer</span>
             </p>
           </>
         ) : (
@@ -138,10 +143,10 @@ export function UploadStep({ onFileUpload }: UploadStepProps) {
               </div>
             </div>
             <div>
-              <h3 className="text-lg font-semibold text-slate-900">
+              <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
                 {selectedFile.name}
               </h3>
-              <p className="mt-1 text-sm text-slate-600">
+              <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
                 {(selectedFile.size / 1024).toFixed(2)} KB
               </p>
             </div>
@@ -151,7 +156,7 @@ export function UploadStep({ onFileUpload }: UploadStepProps) {
                 setSelectedFile(null);
                 if (fileInputRef.current) fileInputRef.current.value = '';
               }}
-              className="inline-flex items-center gap-2 text-blue-600 hover:text-blue-700 font-medium text-sm"
+              className="inline-flex items-center gap-2 text-blue-600 hover:text-blue-700 font-medium text-sm dark:text-blue-400 dark:hover:text-blue-300"
             >
               <X size={16} />
               Replace file
@@ -160,10 +165,21 @@ export function UploadStep({ onFileUpload }: UploadStepProps) {
         )}
       </div>
 
+      {/* Error Message */}
+      {error && (
+        <div className="mt-4 rounded-lg bg-red-50 border border-red-200 p-4 flex items-start gap-3">
+          <X className="h-5 w-5 text-red-500 flex-shrink-0 mt-0.5" />
+          <p className="text-sm text-red-700">{error}</p>
+          <button onClick={() => setError(null)} className="ml-auto text-red-400 hover:text-red-600">
+            <X size={16} />
+          </button>
+        </div>
+      )}
+
       {/* Helper Text */}
-      <div className="mt-6 rounded-lg bg-slate-50 p-4 text-left">
-        <p className="font-semibold text-slate-900 text-sm">Supported:</p>
-        <ul className="mt-2 space-y-1 text-sm text-slate-600">
+      <div className="mt-6 rounded-lg bg-slate-50 p-4 text-left dark:bg-slate-800">
+        <p className="font-semibold text-slate-900 text-sm dark:text-slate-100">Supported:</p>
+        <ul className="mt-2 space-y-1 text-sm text-slate-600 dark:text-slate-400">
           <li>• UTF-8 CSV</li>
           <li>• Maximum 20MB</li>
         </ul>
