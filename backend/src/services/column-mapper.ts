@@ -13,6 +13,7 @@ const CRM_FIELDS_JSON = JSON.stringify(CRM_FIELDS.map(f => ({ field: f.field, de
 
 const ANALYZE_PROMPT = `You are a CSV column mapping engine. Output ONLY valid JSON — no other text, no explanation, no markdown.
 Map CSV columns to CRM fields. Known CSV formats: ${FORMATS_JSON}. Target CRM fields: ${CRM_FIELDS_JSON}.
+Confidence is 0-100 (0=uncertain, 100=certain). Example: {"csvColumn":"Full Name","crmField":"name","confidence":95}.
 Respond ONLY with this exact JSON structure: {"csvType":"","csvTypeDescription":"","mappings":[{"csvColumn":"","crmField":"","confidence":0}],"unmappedColumns":[],"missingRequiredFields":[]}`;
 
 function buildAnalyzePrompt(headers: string[], sampleRows: Record<string, string>[]): string {
