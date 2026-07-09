@@ -35,6 +35,7 @@ export default function Page() {
   const [columnAnalysis, setColumnAnalysis] = useState<CSVAnalysis | null>(null);
   const [columnMappings, setColumnMappings] = useState<import('@/lib/api').ColumnMapping[]>([]);
   const [analysisError, setAnalysisError] = useState<string | null>(null);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
 
   const restored = useRef(false);
 
@@ -76,6 +77,7 @@ export default function Page() {
     setColumnMappings([]);
     setAnalysisError(null);
     setCurrentStep('preview');
+    setIsAnalyzing(true);
 
     try {
       const analysis = await analyzeCSV(headers, rows.slice(0, 20));
@@ -83,6 +85,8 @@ export default function Page() {
       setColumnMappings(analysis.mappings);
     } catch (err) {
       setAnalysisError('AI auto-detection unavailable — map columns manually below.');
+    } finally {
+      setIsAnalyzing(false);
     }
   };
 
@@ -173,6 +177,7 @@ export default function Page() {
               headers={csvData.headers}
               autoMappings={columnMappings}
               analysisError={analysisError}
+              isAnalyzing={isAnalyzing}
               onConfirm={handleConfirmMapping}
               onBack={handleMappingBack}
             />

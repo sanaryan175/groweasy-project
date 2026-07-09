@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { ArrowLeft, ArrowRight, AlertCircle } from 'lucide-react';
+import { ArrowLeft, ArrowRight, AlertCircle, Loader2 } from 'lucide-react';
 import { CRM_FIELDS, CRM_FIELD_NAMES, DO_NOT_IMPORT } from '@/lib/crm-fields';
 
 interface ColumnMapping {
@@ -14,6 +14,7 @@ interface MappingStepProps {
   headers: string[];
   autoMappings: ColumnMapping[];
   analysisError?: string | null;
+  isAnalyzing?: boolean;
   onConfirm: (mappings: ColumnMapping[]) => void;
   onBack: () => void;
 }
@@ -58,7 +59,7 @@ function buildAutoMap(autoMappings: ColumnMapping[], headers: string[]): Record<
   return map;
 }
 
-export function MappingStep({ headers, autoMappings, analysisError, onConfirm, onBack }: MappingStepProps) {
+export function MappingStep({ headers, autoMappings, analysisError, isAnalyzing, onConfirm, onBack }: MappingStepProps) {
   const [mappings, setMappings] = useState<Record<string, string>>(() => buildAutoMap(autoMappings, headers));
 
   useEffect(() => {
@@ -108,7 +109,14 @@ export function MappingStep({ headers, autoMappings, analysisError, onConfirm, o
         </div>
       </div>
 
-      {analysisError && (
+      {isAnalyzing && autoMappings.length === 0 && (
+        <div className="rounded-lg border border-blue-200 bg-blue-50 p-4 text-sm text-blue-800 dark:border-blue-800 dark:bg-blue-950 dark:text-blue-200 flex items-start gap-3">
+          <Loader2 className="h-5 w-5 flex-shrink-0 mt-0.5 animate-spin" />
+          <span>AI is analyzing your columns and mapping them to CRM fields…</span>
+        </div>
+      )}
+
+      {!isAnalyzing && analysisError && (
         <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-200 flex items-start gap-3">
           <AlertCircle className="h-5 w-5 flex-shrink-0 mt-0.5" />
           <span>{analysisError} You can still map columns manually.</span>
